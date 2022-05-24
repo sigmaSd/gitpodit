@@ -3,41 +3,26 @@ import puppeteer, {
   Page,
 } from "https://deno.land/x/puppeteer@9.0.2/mod.ts";
 
-type Meta = {
+export { Page } from "https://deno.land/x/puppeteer@9.0.2/mod.ts";
+
+export interface Meta {
   repo: string;
   shell: (page: Page) => Promise<void>;
   downloadPath: string;
-};
-
-const email = Deno.env.get("email")!;
-const pass = Deno.env.get("pass")!;
-if (!email) throw "email address is required";
-if (!pass) throw "password is required";
-
-async function waitForDownload(browser: Browser) {
-  const dmPage = await browser.newPage();
-  await dmPage.goto("chrome://downloads/");
-
-  await dmPage.bringToFront();
-  await dmPage.waitForFunction(() => {
-    try {
-      const donePath = document.querySelector("downloads-manager")!.shadowRoot!
-        .querySelector(
-          "#frb0",
-        )!.shadowRoot!.querySelector("#pauseOrResume")!;
-      if ((donePath as HTMLButtonElement).innerText != "Pause") {
-        return true;
-      }
-    } catch {
-      //
-    }
-  }, { timeout: 0 });
-  console.log("Download finished");
 }
 
-async function downloadFromGitpod({ repo, shell, downloadPath }: Meta) {
+export interface Creds {
+  email: string;
+  password: string;
+}
+
+export async function downloadFromGitpod(
+  { repo, shell, downloadPath }: Meta,
+  { email, password }: Creds,
+  { headless = false }: { headless?: boolean } = {},
+) {
   console.log("starting gitpod download");
-  const browser = await puppeteer.launch({ headless: false });
+  const browser = await puppeteer.launch({ headless });
   const page = (await browser.pages())[0];
   await page.goto(
     `https://gitpod.io/#${repo}`,
@@ -58,10 +43,10 @@ async function downloadFromGitpod({ repo, shell, downloadPath }: Meta) {
       (document.querySelector(".btn")! as HTMLButtonElement).click();
     },
     email,
-    pass,
+    password,
   );
 
-  await page.waitForNavigation();
+  await page.waitForNavigation({ timeout: 0 });
   await new Promise((r) => setTimeout(r, 15000));
 
   await page.keyboard.press("F1");
@@ -104,23 +89,23 @@ async function downloadFromGitpod({ repo, shell, downloadPath }: Meta) {
   await browser.close();
 }
 
-const cargoWorkspaces = {
-  repo: "https://github.com/pksunkara/cargo-workspaces",
-  shell: async (page: Page) => {
-    await page.keyboard.type("cd cargo-workspaces");
-    await page.keyboard.press("Enter");
-    await page.keyboard.type("cargo build --release");
-    await page.keyboard.press("Enter");
-  },
-  downloadPath: "target/release/cargo-workspaces",
-};
-const irust = {
-  repo: "https://github.com/sigmaSd/irust",
-  shell: async (page: Page) => {
-    await page.keyboard.type("cargo build");
-    await page.keyboard.press("Enter");
-  },
-  downloadPath: "target/debug/irust",
-};
+async function waitForDownload(browser: Browser) {
+  const dmPage = await browser.newPage();
+  await dmPage.goto("chrome://downloads/");
 
-await downloadFromGitpod(cargoWorkspaces);
+  await dmPage.bringToFront();
+  await dmPage.waitForFunction(() => {
+    try {
+      const donePath = document.querySelector("downloads-manager")!.shadowRoot!
+        .querySelector(
+          "#frb0",
+        )!.shadowRoot!.querySelector("#pauseOrResume")!;
+      if ((donePath as HTMLButtonElement).innerText != "Pause") {
+        return true;
+      }
+    } catch {
+      //
+    }
+  }, { timeout: 0 });
+  console.log("Download finished");
+}
