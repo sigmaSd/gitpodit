@@ -2,6 +2,7 @@ import puppeteer, {
   Browser,
   Page,
 } from "https://deno.land/x/puppeteer@9.0.2/mod.ts";
+import { info } from "./utils.ts";
 
 export { Page } from "https://deno.land/x/puppeteer@9.0.2/mod.ts";
 
@@ -19,10 +20,12 @@ export interface Creds {
 export async function downloadFromGitpod(
   { repo, shell, downloadPath }: Meta,
   { email, password }: Creds,
-  { headless = false }: { headless?: boolean } = {},
+  { headless = true }: { headless?: boolean } = {},
 ) {
-  console.log("starting gitpod download");
+  info("Opening browser");
   const browser = await puppeteer.launch({ headless });
+
+  info("Opening page and logging in");
   const page = (await browser.pages())[0];
   await page.goto(
     `https://gitpod.io/#${repo}`,
@@ -46,14 +49,16 @@ export async function downloadFromGitpod(
     password,
   );
 
+  info("Waiting for shell");
   await page.waitForNavigation({ timeout: 0 });
   await new Promise((r) => setTimeout(r, 15000));
 
+  info("Opening terminal");
   await page.keyboard.press("F1");
   await page.keyboard.type("new terminal");
   await page.keyboard.press("Enter");
 
-  await page.waitForSelector(".xterm-cursor-layer");
+  await page.waitForSelector(".xterm-cursor-layer", { timeout: 0 });
   await page.evaluate(() => {
     (document.querySelector(".xterm-cursor-layer") as HTMLCanvasElement)
       .focus();
@@ -62,10 +67,11 @@ export async function downloadFromGitpod(
   await shell(page);
   await page.keyboard.type("python -m http.server");
   await page.keyboard.press("Enter");
+  info("shell commands are queued, waiting for compilation to finish");
 
   const TargetURl = "https://8000-" + page.url().replace("https://", "") +
     downloadPath;
-  console.log("Download url is: ", TargetURl);
+  info("Download url is: " + TargetURl);
 
   const newPage = await browser.newPage();
   while (true) {
@@ -80,7 +86,9 @@ export async function downloadFromGitpod(
     }
   }
 
+  info("Compilation finished, waiting for download to finish");
   await waitForDownload(browser);
+  info("Download finished, the file is located at your system download folder");
 
   await page.keyboard.press("F1");
   await page.keyboard.type("stop workspace");
@@ -107,5 +115,4 @@ async function waitForDownload(browser: Browser) {
       //
     }
   }, { timeout: 0 });
-  console.log("Download finished");
 }

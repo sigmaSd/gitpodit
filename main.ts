@@ -1,8 +1,11 @@
+// deno-lint-ignore-file no-unused-vars
 import { Creds, downloadFromGitpod, Page } from "./src/gitpod.ts";
+import { Secret } from "https://deno.land/x/cliffy@v0.24.2/prompt/mod.ts";
 
+console.log("Github credentials");
 const creds: Creds = {
-  email: prompt("email> ") || "",
-  password: prompt("password> ") || "",
+  email: await Secret.prompt("email> "),
+  password: await Secret.prompt("password> "),
 };
 
 if (!creds.email) throw "email address is required";
@@ -34,5 +37,23 @@ const cargoEdit = {
   },
   downloadPath: "target/release/cargo-edit",
 };
+const pastelDebug = {
+  repo: "https://github.com/sharkdp/pastel",
+  shell: async (page: Page) => {
+    await page.keyboard.type("cargo build");
+    await page.keyboard.press("Enter");
+  },
+  downloadPath: "target/debug/pastel",
+};
+const lapce = {
+  repo: "https://github.com/lapce/lapce",
+  shell: async (page: Page) => {
+    await page.keyboard.type("sudo apt install libgtk-3-dev");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("cargo build --release");
+    await page.keyboard.press("Enter");
+  },
+  downloadPath: "target/release/lapce",
+};
 
-await downloadFromGitpod(cargoEdit, creds);
+await downloadFromGitpod(pastelDebug, creds, { headless: false });
