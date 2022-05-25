@@ -1,15 +1,7 @@
 // deno-lint-ignore-file no-unused-vars
 import { Creds, downloadFromGitpod, Page } from "./src/gitpod.ts";
 import { Secret } from "https://deno.land/x/cliffy@v0.24.2/prompt/mod.ts";
-
-console.log("Github credentials");
-const creds: Creds = {
-  email: await Secret.prompt("email> "),
-  password: await Secret.prompt("password> "),
-};
-
-if (!creds.email) throw "email address is required";
-if (!creds.password) throw "password is required";
+import { info } from "./src/utils.ts";
 
 const cargoWorkspaces = {
   repo: "https://github.com/pksunkara/cargo-workspaces",
@@ -55,5 +47,18 @@ const lapce = {
   },
   downloadPath: "target/release/lapce",
 };
+
+/////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////
+
+info(`downloading ${pastelDebug.repo}`);
+
+console.log("Github credentials");
+const creds: Creds = {
+  email: await Secret.prompt("email> "),
+  password: await Secret.prompt("password> "),
+};
+if (!creds.email) throw "email address is required";
+if (!creds.password) throw "password is required";
 
 await downloadFromGitpod(pastelDebug, creds, { headless: false });
